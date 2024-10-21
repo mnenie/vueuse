@@ -7,19 +7,8 @@ import { unrefElement } from '../unrefElement'
 import { useEventListener } from '../useEventListener'
 
 export interface OnClickOutsideOptions extends ConfigurableWindow {
-  /**
-   * List of elements that should not trigger the event.
-   */
   ignore?: MaybeRefOrGetter<(MaybeElementRef | string)[]>
-  /**
-   * Use capturing phase for internal event listener.
-   * @default true
-   */
   capture?: boolean
-  /**
-   * Run handler function if focus moves to an iframe.
-   * @default false
-   */
   detectIframe?: boolean
 }
 
@@ -27,14 +16,6 @@ export type OnClickOutsideHandler<T extends { detectIframe: OnClickOutsideOption
 
 let _iOSWorkaround = false
 
-/**
- * Listen for clicks outside of an element.
- *
- * @see https://vueuse.org/onClickOutside
- * @param target
- * @param handler
- * @param options
- */
 export function onClickOutside<T extends OnClickOutsideOptions>(
   target: MaybeElementRef,
   handler: OnClickOutsideHandler<{ detectIframe: T['detectIframe'] }>,
@@ -45,8 +26,6 @@ export function onClickOutside<T extends OnClickOutsideOptions>(
   if (!window)
     return noop
 
-  // Fixes: https://github.com/vueuse/vueuse/issues/1520
-  // How it works: https://stackoverflow.com/a/39712411
   if (isIOS && !_iOSWorkaround) {
     _iOSWorkaround = true
     Array.from(window.document.body.children)
@@ -54,6 +33,7 @@ export function onClickOutside<T extends OnClickOutsideOptions>(
     window.document.documentElement.addEventListener('click', noop)
   }
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
   let shouldListen = true
 
   const shouldIgnore = (event: PointerEvent) => {
@@ -72,16 +52,16 @@ export function onClickOutside<T extends OnClickOutsideOptions>(
   const listener = (event: PointerEvent) => {
     const el = unrefElement(target)
 
-    if (!el || el === event.target || event.composedPath().includes(el))
+    if (!el || event.composedPath().includes(el))
       return
 
-    if (event.detail === 0)
-      shouldListen = !shouldIgnore(event)
-
-    if (!shouldListen) {
-      shouldListen = true
+    // Проверка на количество дочерних элементов, игнорируем клик, если их больше одного
+    if (el.childNodes.length > 1) {
       return
     }
+
+    if (shouldIgnore(event))
+      return
 
     handler(event)
   }
